@@ -12,4 +12,4 @@ labels:
 images:
   - name: payments-api
     newName: acrregk8s1e1193.azurecr.io/payments-api
-    digest: sha256:3ae4d0ae8666dd67152979425620e30cd43a42018752180a1dc1b4f6fde98469   # build 041af6de3a4d-3
+    digest: sha256:329c75f0ad69e9529968c716625625892f0e953b36314c2386882cc20656097e   # build 6bca1e2bfded-4
