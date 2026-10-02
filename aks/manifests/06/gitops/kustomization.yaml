@@ -1,0 +1,15 @@
+# GitOps: the desired state of payments-api in namespace gitops-payments, reconciled by Flux on AKS.
+# Promotion is a commit that changes the digest below; rollback is reverting that commit.
+# Only digests that passed the aks-deploy pipeline (tests, scan gate, Key Vault signature) are promoted here.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: gitops-payments
+resources:
+  - ../../../../k8s/base/payments-api
+labels:
+  - pairs: { owner: payments-platform, delivered-by: flux }
+    includeSelectors: false
+images:
+  - name: payments-api
+    newName: acrregk8s1e1193.azurecr.io/payments-api
+    digest: sha256:3ae4d0ae8666dd67152979425620e30cd43a42018752180a1dc1b4f6fde98469   # build 041af6de3a4d-3
