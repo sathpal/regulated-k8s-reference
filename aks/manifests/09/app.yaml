@@ -1,0 +1,58 @@
+# The known-good baseline for the troubleshooting runbook: payments-api (2 replicas) and its Service.
+# ACR_NAME is a placeholder:  sed "s/ACR_NAME/$ACR/g" aks/manifests/09/app.yaml | kubectl apply -f -
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payments-api
+  namespace: lab-c-trouble
+  labels:
+    app.kubernetes.io/name: payments-api
+spec:
+  replicas: 2
+  progressDeadlineSeconds: 120
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: { maxSurge: 1, maxUnavailable: 0 }
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: payments-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: payments-api
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: app
+          image: ACR_NAME.azurecr.io/labs/c/payments-api:1
+          ports:
+            - { name: http, containerPort: 8080 }
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { memory: 128Mi }
+          readinessProbe:
+            httpGet: { path: /readyz, port: http }
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: payments-api
+  namespace: lab-c-trouble
+spec:
+  selector:
+    app.kubernetes.io/name: payments-api
+  ports:
+    - { name: http, port: 80, targetPort: http }

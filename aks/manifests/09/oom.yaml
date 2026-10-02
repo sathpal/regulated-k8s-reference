@@ -1,0 +1,24 @@
+# Allocates 256 MiB inside a 64 MiB memory limit: the kernel OOM killer ends it and the kubelet reports OOMKilled.
+# Uses the patient-api image only because it has a Python interpreter.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: oom
+  namespace: lab-c-trouble
+spec:
+  restartPolicy: Always
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65532
+    seccompProfile: { type: RuntimeDefault }
+  containers:
+    - name: app
+      image: ACR_NAME.azurecr.io/labs/c/patient-api:1
+      command: ["python", "-c", "import time; b = bytearray(256 * 1024 * 1024); print('allocated', flush=True); time.sleep(3600)"]
+      resources:
+        requests: { cpu: 10m, memory: 32Mi }
+        limits: { memory: 64Mi }
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities: { drop: ["ALL"] }

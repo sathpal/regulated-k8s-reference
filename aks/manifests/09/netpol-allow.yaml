@@ -1,0 +1,41 @@
+# The allow rules that go with default deny: the client may resolve DNS and call payments-api on 8080,
+# and payments-api accepts that traffic. Both sides are needed: egress on the client, ingress on the server.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: client-egress
+  namespace: lab-c-trouble
+spec:
+  podSelector:
+    matchLabels: { app.kubernetes.io/name: client }
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: kube-system }
+          podSelector:
+            matchLabels: { k8s-app: kube-dns }
+      ports:
+        - { port: 53, protocol: UDP }
+        - { port: 53, protocol: TCP }
+    - to:
+        - podSelector:
+            matchLabels: { app.kubernetes.io/name: payments-api }
+      ports:
+        - { port: 8080, protocol: TCP }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: payments-api-ingress
+  namespace: lab-c-trouble
+spec:
+  podSelector:
+    matchLabels: { app.kubernetes.io/name: payments-api }
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels: { app.kubernetes.io/name: client }
+      ports:
+        - { port: 8080, protocol: TCP }

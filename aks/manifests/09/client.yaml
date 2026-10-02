@@ -1,0 +1,25 @@
+# A small client pod for checks from inside the namespace: curl, getent and a shell (curl:latest-dev).
+apiVersion: v1
+kind: Pod
+metadata:
+  name: client
+  namespace: lab-c-trouble
+  labels:
+    app.kubernetes.io/name: client
+spec:
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65532
+    seccompProfile: { type: RuntimeDefault }
+  containers:
+    - name: client
+      image: cgr.dev/chainguard/curl:latest-dev
+      command: ["sleep", "86400"]
+      resources:
+        requests: { cpu: 10m, memory: 16Mi }
+        limits: { memory: 32Mi }
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities: { drop: ["ALL"] }

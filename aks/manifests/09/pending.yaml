@@ -1,0 +1,22 @@
+# Asks for 3 CPUs. A Standard_D2s_v5 node has 2 vCPUs (1900m allocatable), so no node, existing or new, can run it.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: too-big
+  namespace: lab-c-trouble
+spec:
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65532
+    seccompProfile: { type: RuntimeDefault }
+  containers:
+    - name: app
+      image: cgr.dev/chainguard/busybox:latest
+      command: ["sleep", "3600"]
+      resources:
+        requests: { cpu: "3", memory: 64Mi }
+        limits: { memory: 64Mi }
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities: { drop: ["ALL"] }

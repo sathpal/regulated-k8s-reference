@@ -1,0 +1,11 @@
+# A second Service whose selector has a typo (payment-api, not payments-api): it selects no pods.
+apiVersion: v1
+kind: Service
+metadata:
+  name: payments-typo
+  namespace: lab-c-trouble
+spec:
+  selector:
+    app.kubernetes.io/name: payment-api
+  ports:
+    - { name: http, port: 80, targetPort: http }
