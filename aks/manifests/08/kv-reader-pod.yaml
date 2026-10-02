@@ -1,0 +1,40 @@
+# A hardened pod that reads one Key Vault secret through the Secrets Store CSI driver.
+# The label opts the pod in to the workload identity webhook; the service account carries the client ID.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kv-reader
+  namespace: lab-d-secure
+  labels:
+    azure.workload.identity/use: "true"
+spec:
+  serviceAccountName: kv-reader
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65532
+    runAsGroup: 65532
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: app
+      image: cgr.dev/chainguard/busybox:latest
+      command: ["sleep", "3600"]
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop: ["ALL"]
+      resources:
+        requests: { cpu: 10m, memory: 16Mi }
+        limits: { memory: 32Mi }
+      volumeMounts:
+        - name: kv
+          mountPath: /mnt/secrets
+          readOnly: true
+  volumes:
+    - name: kv
+      csi:
+        driver: secrets-store.csi.k8s.io
+        readOnly: true
+        volumeAttributes:
+          secretProviderClass: kv-lab-d

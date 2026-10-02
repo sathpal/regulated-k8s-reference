@@ -1,0 +1,34 @@
+# Passes Pod Security "restricted": numeric non-root user, no privilege escalation, no capabilities,
+# RuntimeDefault seccomp, read-only root filesystem, and a small writable emptyDir for /tmp.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hardened
+  namespace: lab-d-secure
+spec:
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65532
+    runAsGroup: 65532
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: app
+      image: cgr.dev/chainguard/busybox:latest
+      command: ["sleep", "3600"]
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop: ["ALL"]
+      resources:
+        requests: { cpu: 10m, memory: 16Mi }
+        limits: { memory: 32Mi }
+      volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+  volumes:
+    - name: tmp
+      emptyDir:
+        sizeLimit: 16Mi

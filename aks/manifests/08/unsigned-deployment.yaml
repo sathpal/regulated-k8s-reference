@@ -1,0 +1,32 @@
+# A Deployment of the unsigned build. IMAGE is replaced when applied.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payments-unsigned
+  namespace: lab-d-signed
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: payments-unsigned }
+  template:
+    metadata:
+      labels: { app: payments-unsigned }
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: app
+          image: IMAGE
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests: { cpu: 10m, memory: 32Mi }
+            limits: { memory: 64Mi }

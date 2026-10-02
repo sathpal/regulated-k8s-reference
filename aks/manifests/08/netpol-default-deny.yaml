@@ -1,0 +1,9 @@
+# Nothing in the namespace may send or receive traffic until a policy allows it. This includes DNS.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  namespace: lab-d-net
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]

@@ -1,0 +1,29 @@
+# A pod that runs as the namespace-reader managed identity (workload identity), with no Key Vault access.
+# Used to prove the namespace-scoped Azure RBAC assignment with a real Entra ID token.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ns-reader
+  namespace: lab-d-secure
+  labels:
+    azure.workload.identity/use: "true"
+spec:
+  serviceAccountName: ns-reader
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65532
+    runAsGroup: 65532
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: app
+      image: cgr.dev/chainguard/busybox:latest
+      command: ["sleep", "3600"]
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop: ["ALL"]
+      resources:
+        requests: { cpu: 10m, memory: 16Mi }
+        limits: { memory: 32Mi }

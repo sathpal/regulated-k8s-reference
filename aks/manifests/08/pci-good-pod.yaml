@@ -1,0 +1,41 @@
+# Meets Pod Security "restricted" and every policy in policy/kyverno/cluster:
+# approved registry, image pinned by digest (DIGEST is replaced when applied), data-classification label,
+# CPU and memory requests, a memory limit and a readiness probe.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: compliant
+  namespace: lab-d-pci
+  labels:
+    data-classification: pci
+spec:
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65532
+    runAsGroup: 65532
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: app
+      image: cgr.dev/chainguard/busybox@DIGEST
+      command: ["sh", "-c", "touch /tmp/ready && sleep 3600"]
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop: ["ALL"]
+      resources:
+        requests: { cpu: 10m, memory: 16Mi }
+        limits: { memory: 32Mi }
+      readinessProbe:
+        exec:
+          command: ["cat", "/tmp/ready"]
+        periodSeconds: 5
+      volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+  volumes:
+    - name: tmp
+      emptyDir:
+        sizeLimit: 16Mi

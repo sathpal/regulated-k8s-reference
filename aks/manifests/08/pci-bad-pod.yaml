@@ -1,0 +1,22 @@
+# Passes Pod Security "restricted" but breaks three of the repo's Kyverno policies:
+# a :latest tag, no data-classification label, no requests, limits or readiness probe.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: quick-test
+  namespace: lab-d-pci
+spec:
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65532
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: app
+      image: cgr.dev/chainguard/busybox:latest
+      command: ["sleep", "3600"]
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop: ["ALL"]
