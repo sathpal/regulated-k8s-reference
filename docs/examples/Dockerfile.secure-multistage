@@ -13,6 +13,8 @@
 #           --build-arg VERSION=1.4.2 --build-arg GIT_SHA=$(git rev-parse HEAD) \
 #           --provenance=mode=max --sbom=true -t registry.example.com/payments-api:1.4.2 --push .
 # Sign:   see sign-and-verify.sh next to this file. Signing happens after the push, by digest.
+# Builder: the cache and secret mounts below need BuildKit (docker buildx). Azure Container Registry's quick
+#         builds (az acr build) use the legacy builder and fail on them; build with buildx there, or drop the mounts.
 # =====================================================================================================
 
 

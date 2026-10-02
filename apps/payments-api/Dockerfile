@@ -11,8 +11,9 @@ COPY go.mod ./
 RUN go mod download
 COPY . .
 ARG VERSION=dev
-RUN --mount=type=cache,target=/root/.cache/go-build \
-    go test ./... && \
+# No BuildKit-only features (cache or secret mounts): this file must build the same way with BuildKit
+# (docker buildx in CI) and with the legacy builder that ACR Tasks `az acr build` uses.
+RUN go test ./... && \
     CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=${VERSION}" -o /out/payments-api .
 
 # static: CA certificates, tzdata and a nonroot user. No shell, no package manager.
