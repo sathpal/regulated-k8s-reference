@@ -57,6 +57,8 @@ jobs:
           cosign verify --key aks/keys/cosign-signing.pub "$REF" > /dev/null && echo "signature verified: $REF"
 
       - uses: azure/use-kubelogin@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}   # used only to look up the latest kubelogin release
         with: { kubelogin-version: latest }
       - name: Deploy the digest to AKS and wait for it
         id: deploy
