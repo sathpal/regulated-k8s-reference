@@ -1,0 +1,21 @@
+# Created by the platform team, not by the pipeline: the pipeline's identity can deploy INTO this namespace
+# (Azure RBAC Writer scoped to it) but cannot create namespaces or touch anything else in the cluster.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cicd-payments
+  labels:
+    data-classification: internal
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/audit: restricted
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gitops-payments
+  labels:
+    data-classification: internal
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/audit: restricted

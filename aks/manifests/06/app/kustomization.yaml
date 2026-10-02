@@ -1,0 +1,9 @@
+# The payments-api workload as the pipeline deploys it on AKS. The pipeline adds the image by digest.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: cicd-payments
+resources:
+  - ../../../../k8s/base/payments-api
+labels:
+  - pairs: { owner: payments-platform, delivered-by: github-actions }
+    includeSelectors: false

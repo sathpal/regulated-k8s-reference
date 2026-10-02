@@ -1,0 +1,118 @@
+# Continuous delivery to AKS for payments-api, with no stored cloud secrets:
+#   OIDC login to Azure -> build in ACR (tests run inside the build) -> scan gate -> sign the digest with a key
+#   held in Key Vault -> deploy the digest to AKS -> wait for the rollout -> smoke test -> roll back on failure.
+# The Azure identity is a user-assigned managed identity with a federated credential for this repository's main
+# branch, Contributor on the registry only, Crypto User on the vault, and Azure RBAC Writer on ONE namespace.
+name: aks-deploy
+on:
+  workflow_dispatch:
+    inputs:
+      simulate_bad_release:
+        description: "Ship a release whose readiness never passes (proves the automatic rollback)"
+        type: boolean
+        default: false
+permissions:
+  contents: read
+  id-token: write          # OIDC token for azure/login; no client secret anywhere
+concurrency:
+  group: aks-deploy
+  cancel-in-progress: false
+env:
+  RG: ${{ vars.AKS_RG }}
+  AKS: ${{ vars.AKS_NAME }}
+  ACR: ${{ vars.ACR_NAME }}
+  KV: ${{ vars.KV_NAME }}
+  NS: cicd-payments
+jobs:
+  deliver:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Build in ACR (unit tests run inside the build stage)
+        id: build
+        run: |
+          TAG="${GITHUB_SHA::12}-${GITHUB_RUN_NUMBER}"
+          az acr build -r "$ACR" -t "payments-api:$TAG" --build-arg VERSION="$TAG" apps/payments-api --no-logs -o none
+          DIGEST=$(az acr repository show -n "$ACR" --image "payments-api:$TAG" --query digest -o tsv)
+          REF="$ACR.azurecr.io/payments-api@$DIGEST"
+          echo "ref=$REF" >> "$GITHUB_OUTPUT"
+          echo "built $REF (tag $TAG)"
+
+      - uses: sigstore/cosign-installer@v3
+      - name: Scan gate and signature
+        env:
+          REF: ${{ steps.build.outputs.ref }}
+        run: |
+          az acr login -n "$ACR"
+          curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+          grype "$REF" --only-fixed --fail-on high
+          # The private key never leaves Key Vault; cosign asks the vault to sign the digest.
+          cosign sign --yes --key "azurekms://$KV.vault.azure.net/cosign-signing" "$REF"
+          cosign verify --key aks/keys/cosign-signing.pub "$REF" > /dev/null && echo "signature verified: $REF"
+
+      - uses: azure/use-kubelogin@v1
+        with: { kubelogin-version: latest }
+      - name: Deploy the digest to AKS and wait for it
+        id: deploy
+        env:
+          REF: ${{ steps.build.outputs.ref }}
+          BAD: ${{ inputs.simulate_bad_release }}
+        run: |
+          az aks get-credentials -g "$RG" -n "$AKS" --overwrite-existing -o none
+          kubelogin convert-kubeconfig -l azurecli
+          PREVIOUS=$(kubectl -n "$NS" get deploy payments-api -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null || true)
+          echo "previous=$PREVIOUS" >> "$GITHUB_OUTPUT"
+          mkdir -p .deploy
+          {
+            echo "apiVersion: kustomize.config.k8s.io/v1beta1"
+            echo "kind: Kustomization"
+            echo "resources: [../aks/manifests/06/app]"
+            echo "images:"
+            echo "  - name: payments-api"
+            echo "    newName: ${REF%@*}"
+            echo "    digest: ${REF#*@}"
+            if [ "$BAD" = "true" ]; then
+              echo "patches:"
+              echo "  - target: { kind: Deployment, name: payments-api }"
+              echo "    patch: |-"
+              echo "      - op: add"
+              echo "        path: /spec/template/spec/containers/0/env/-"
+              echo "        value: { name: FAIL_READINESS, value: \"true\" }"
+            fi
+          } > .deploy/kustomization.yaml
+          kubectl apply -k .deploy
+          if ! kubectl -n "$NS" rollout status deploy/payments-api --timeout=150s; then
+            echo "::error::rollout did not become ready: rolling back"
+            kubectl -n "$NS" rollout undo deploy/payments-api
+            kubectl -n "$NS" rollout status deploy/payments-api --timeout=150s
+            kubectl -n "$NS" get deploy payments-api -o jsonpath='running after rollback: {.spec.template.spec.containers[0].image}{"\n"}'
+            exit 1
+          fi
+
+      - name: Smoke test through the Service
+        run: |
+          kubectl -n "$NS" port-forward svc/payments-api 18080:80 > /dev/null 2>&1 &
+          for i in $(seq 1 20); do curl -sf localhost:18080/readyz > /dev/null && break; sleep 1; done
+          curl -sf localhost:18080/version
+          curl -sf -X POST localhost:18080/v1/payments -H "Idempotency-Key: ci-${GITHUB_RUN_ID}" \
+            -d '{"amount_minor":100,"currency":"INR","card_number":"4111111111111111"}' | grep -q '411111\*\*\*\*\*\*1111'
+          echo "smoke test passed"
+
+      - name: Summary
+        if: always()
+        env:
+          REF: ${{ steps.build.outputs.ref }}
+          PREVIOUS: ${{ steps.deploy.outputs.previous }}
+        run: |
+          {
+            echo "### payments-api to AKS"
+            echo "- built, scanned and signed: \`$REF\`"
+            echo "- previously running: \`${PREVIOUS:-none}\`"
+            echo "- result: ${{ job.status }}"
+          } >> "$GITHUB_STEP_SUMMARY"
