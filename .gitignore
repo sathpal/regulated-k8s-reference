@@ -1,0 +1,8 @@
+*.tar
+*.spdx.json
+/kyverno
+/bin/
+.DS_Store
+
+# Private interview preparation, never published
+.private/

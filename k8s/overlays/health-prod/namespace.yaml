@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: health-records
+  labels:
+    data-classification: phi
+    # Pod Security admission: refuse anything that is not "restricted" (non-root, no privilege escalation,
+    # all capabilities dropped, seccomp on). Warn and audit at the same level.
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/audit: restricted

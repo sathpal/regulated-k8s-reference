@@ -1,0 +1,88 @@
+# Pods for the policy tests: one compliant, and one refused for each reason.
+---
+# passes every policy
+apiVersion: v1
+kind: Pod
+metadata:
+  name: compliant
+  namespace: bank-payments
+  labels:
+    data-classification: pci
+spec:
+  containers:
+    - name: app
+      image: ghcr.io/sathpal/regulated-k8s-reference/payments-api:1.0.0
+      resources:
+        requests: { cpu: 50m, memory: 64Mi }
+        limits: { memory: 128Mi }
+      readinessProbe:
+        httpGet: { path: /readyz, port: 8080 }
+        periodSeconds: 5
+---
+# refused: registry not allowed
+apiVersion: v1
+kind: Pod
+metadata:
+  name: upstream-image
+  namespace: bank-payments
+  labels:
+    data-classification: pci
+spec:
+  containers:
+    - name: app
+      image: python:3.13-slim
+      resources:
+        requests: { cpu: 50m, memory: 64Mi }
+        limits: { memory: 128Mi }
+      readinessProbe:
+        httpGet: { path: /readyz, port: 8080 }
+        periodSeconds: 5
+---
+# refused: moving tag
+apiVersion: v1
+kind: Pod
+metadata:
+  name: latest-tag
+  namespace: bank-payments
+  labels:
+    data-classification: pci
+spec:
+  containers:
+    - name: app
+      image: cgr.dev/chainguard/python:latest
+      resources:
+        requests: { cpu: 50m, memory: 64Mi }
+        limits: { memory: 128Mi }
+      readinessProbe:
+        httpGet: { path: /readyz, port: 8080 }
+        periodSeconds: 5
+---
+# refused: no requests, limits or readiness probe
+apiVersion: v1
+kind: Pod
+metadata:
+  name: no-resources
+  namespace: bank-payments
+  labels:
+    data-classification: pci
+spec:
+  containers:
+    - name: app
+      image: ghcr.io/sathpal/regulated-k8s-reference/payments-api:1.0.0
+---
+# refused: no data-classification label
+apiVersion: v1
+kind: Pod
+metadata:
+  name: no-classification
+  namespace: bank-payments
+spec:
+  containers:
+    - name: app
+      image: ghcr.io/sathpal/regulated-k8s-reference/payments-api:1.0.0
+      resources:
+        requests: { cpu: 50m, memory: 64Mi }
+        limits: { memory: 128Mi }
+      readinessProbe:
+        httpGet: { path: /readyz, port: 8080 }
+        periodSeconds: 5

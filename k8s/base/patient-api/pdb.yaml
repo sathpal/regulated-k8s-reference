@@ -1,0 +1,9 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: patient-api
+spec:
+  minAvailable: 2               # node drains and upgrades never take more than one replica at a time
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: patient-api

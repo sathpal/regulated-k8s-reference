@@ -1,0 +1,5 @@
+# For comparison only: a typical first Dockerfile. Root, full Debian userland, shell form CMD.
+FROM python:3.13-slim
+WORKDIR /app
+COPY . .
+CMD python app.py

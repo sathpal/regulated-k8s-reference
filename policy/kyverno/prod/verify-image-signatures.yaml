@@ -1,0 +1,32 @@
+# Production only (needs network access to the registry and the Sigstore transparency log).
+# Admits only images signed by this repository's release workflow on main, keyless (GitHub OIDC).
+# Roll out in Audit, read the PolicyReports, then switch to Enforce and turn on mutateDigest and verifyDigest
+# so the pod runs the exact digest that was verified.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: verify-image-signatures
+spec:
+  validationFailureAction: Audit
+  webhookTimeoutSeconds: 30
+  rules:
+    - name: signed-by-release-workflow
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+              namespaceSelector:
+                matchExpressions:
+                  - { key: data-classification, operator: In, values: [pci, phi] }
+      verifyImages:
+        - imageReferences:
+            - "ghcr.io/sathpal/regulated-k8s-reference/*"
+          mutateDigest: false
+          verifyDigest: false
+          attestors:
+            - entries:
+                - keyless:
+                    subject: "https://github.com/sathpal/regulated-k8s-reference/.github/workflows/delivery.yml@refs/heads/main"
+                    issuer: "https://token.actions.githubusercontent.com"
+                    rekor:
+                      url: https://rekor.sigstore.dev

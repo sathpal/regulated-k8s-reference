@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: patient-api
+  labels:
+    app.kubernetes.io/name: patient-api
+    data-classification: phi
+spec:
+  replicas: 3
+  revisionHistoryLimit: 5
+  progressDeadlineSeconds: 120   # a release that never becomes ready is marked failed, so CI can roll back
+  minReadySeconds: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0           # never drop below full capacity during a release
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: patient-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: patient-api
+        data-classification: phi
+    spec:
+      serviceAccountName: patient-api
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      securityContext:            # passes the Pod Security "restricted" profile
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      topologySpreadConstraints:  # spread replicas across zones and nodes where the cluster has them
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: patient-api
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: patient-api
+      containers:
+        - name: app
+          image: patient-api             # replaced by the overlay with a registry path and digest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: DRAIN_SECONDS
+              value: "5"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 128Mi       # memory limit protects the node; no CPU limit avoids throttling
+          startupProbe:
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 2
+            failureThreshold: 30
+          readinessProbe:
+            httpGet: { path: /readyz, port: http }
+            periodSeconds: 5
+            failureThreshold: 2
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 10
+            failureThreshold: 3

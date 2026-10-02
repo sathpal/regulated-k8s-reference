@@ -1,0 +1,17 @@
+# Bank production: payments-api in its own PCI-scoped namespace.
+# CI replaces the tag with the exact digest it built, scanned and signed (never a moving tag).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: bank-payments
+resources:
+  - namespace.yaml
+  - ../../base/payments-api
+labels:
+  - pairs:
+      owner: payments-platform
+      compliance-scope: pci-dss
+    includeSelectors: false
+images:
+  - name: payments-api
+    newName: ghcr.io/sathpal/regulated-k8s-reference/payments-api
+    newTag: "1.0.0"

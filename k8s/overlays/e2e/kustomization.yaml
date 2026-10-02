@@ -1,0 +1,11 @@
+# End-to-end test on kind: both production overlays, with the images CI just built and loaded.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../bank-prod
+  - ../health-prod
+images:
+  - name: ghcr.io/sathpal/regulated-k8s-reference/payments-api
+    newTag: e2e
+  - name: ghcr.io/sathpal/regulated-k8s-reference/patient-api
+    newTag: e2e

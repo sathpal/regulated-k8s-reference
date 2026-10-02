@@ -1,0 +1,172 @@
+# syntax=docker/dockerfile:1
+# =====================================================================================================
+# Reference: a security-focused multi-stage Dockerfile for a Python (FastAPI) service.
+# For reading and discussion. Every stage and line says what it protects against.
+#
+#   base     pin the base images by digest (supply chain: no silent changes)
+#   deps     install dependencies with hashes, a cache mount and a secret mount (no secrets in layers)
+#   test     run the tests; the final image cannot be built if they fail
+#   audit    optional: check dependencies for known vulnerabilities (run with --target audit)
+#   runtime  ship only the app and its dependencies on a minimal, non-root image
+#
+# Build:  docker buildx build --secret id=pip_conf,src=$HOME/.config/pip/pip.conf \
+#           --build-arg VERSION=1.4.2 --build-arg GIT_SHA=$(git rev-parse HEAD) \
+#           --provenance=mode=max --sbom=true -t registry.example.com/payments-api:1.4.2 --push .
+# Sign:   see sign-and-verify.sh next to this file. Signing happens after the push, by digest.
+# =====================================================================================================
+
+
+# -----------------------------------------------------------------------------------------------------
+# Stage 0: base images, pinned by digest
+# -----------------------------------------------------------------------------------------------------
+# A tag like :latest can point to a different image tomorrow. A digest (sha256:...) cannot.
+# Pin both images, and let automation (Renovate or Digestabot) open a pull request when a new digest
+# is published, so base-image updates are tested and reviewed like any other change.
+# Verify Chainguard's signature on these digests in CI before building (sign-and-verify.sh, step 1).
+ARG BUILD_IMAGE=cgr.dev/chainguard/python:latest-dev@sha256:REPLACE_WITH_DIGEST
+ARG RUNTIME_IMAGE=cgr.dev/chainguard/python:latest@sha256:REPLACE_WITH_DIGEST
+
+
+# -----------------------------------------------------------------------------------------------------
+# Stage 1: deps - install dependencies into a virtual environment
+# -----------------------------------------------------------------------------------------------------
+# The -dev image has a shell, pip and compilers. It is used to BUILD, never shipped.
+FROM ${BUILD_IMAGE} AS deps
+
+# Create the app directory explicitly with the right owner. Do not rely on WORKDIR to create it:
+# BuildKit and the legacy builder (for example ACR Tasks) create a new WORKDIR with different owners.
+USER root
+RUN mkdir -p /app && chown 65532:65532 /app
+USER 65532
+WORKDIR /app
+
+# The venv is created at the same path the runtime image will use, so its paths stay valid.
+RUN python -m venv /app/venv
+ENV PATH="/app/venv/bin:${PATH}"
+
+# Copy only the lock file first: dependencies are re-installed only when the lock file changes,
+# not on every source change (cache-friendly ordering).
+COPY --chown=65532:65532 requirements.lock ./
+
+# Security choices in this one RUN:
+#  --require-hashes        every package must match the hash in the lock file (pip-compile --generate-hashes),
+#                          so a tampered or substituted package fails the build
+#  --only-binary=:all:     install wheels only; source distributions run arbitrary setup.py code at install time
+#  --no-cache-dir          nothing left behind in the layer (the cache mount below keeps builds fast instead)
+#  type=cache              pip's download cache survives between builds but never lands in an image layer
+#  type=secret             the private index credentials are mounted for this one command only:
+#                          not in a layer, not in `docker history`, not in build-arg provenance.
+#                          NEVER pass a token with ARG or ENV: both are recorded in the image metadata.
+RUN --mount=type=cache,target=/home/nonroot/.cache/pip,uid=65532 \
+    --mount=type=secret,id=pip_conf,target=/home/nonroot/.config/pip/pip.conf,uid=65532,required=false \
+    pip install --require-hashes --only-binary=:all: --no-cache-dir -r requirements.lock
+
+
+# -----------------------------------------------------------------------------------------------------
+# Stage 2: test - tests run inside the build
+# -----------------------------------------------------------------------------------------------------
+# Test dependencies (pytest and friends) live only in this stage; they never reach the runtime image.
+FROM deps AS test
+COPY --chown=65532:65532 requirements-dev.lock ./
+RUN --mount=type=cache,target=/home/nonroot/.cache/pip,uid=65532 \
+    pip install --require-hashes --only-binary=:all: --no-cache-dir -r requirements-dev.lock
+COPY --chown=65532:65532 app/ ./app/
+COPY --chown=65532:65532 tests/ ./tests/
+# A failing test fails the build. The marker file is copied into the runtime stage below, which forces
+# BuildKit to run this stage: BuildKit SKIPS any stage the target does not depend on, so a test stage that
+# nothing copies from would silently never run. (Alternative: CI runs `docker build --target test` first.)
+RUN python -m pytest -q tests && touch /tmp/tests-passed
+
+
+# -----------------------------------------------------------------------------------------------------
+# Stage 3 (optional): audit - known vulnerabilities in the dependencies
+# -----------------------------------------------------------------------------------------------------
+# Not on the path to the runtime image, so it only runs when asked: `docker build --target audit .`
+# Needs network access to the vulnerability database. Many teams run this in CI with grype or trivy on the
+# finished image instead; doing both catches dependency issues before the image even exists.
+FROM deps AS audit
+RUN --mount=type=cache,target=/home/nonroot/.cache/pip,uid=65532 \
+    pip install --no-cache-dir pip-audit && pip-audit -r requirements.lock --strict
+
+
+# -----------------------------------------------------------------------------------------------------
+# Stage 4: runtime - what actually ships
+# -----------------------------------------------------------------------------------------------------
+# Minimal image: Python and the libraries it needs. No shell, no pip, no package manager, no compilers.
+# An attacker with code execution finds nothing to escalate with; scanners find almost nothing to report.
+FROM ${RUNTIME_IMAGE} AS runtime
+
+# Non-secret build metadata (fine as ARG). Recorded as OCI labels so anyone can trace the image to its source.
+ARG VERSION=dev
+ARG GIT_SHA=unknown
+LABEL org.opencontainers.image.title="payments-api" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.revision="${GIT_SHA}" \
+      org.opencontainers.image.source="https://github.com/example/payments-api" \
+      org.opencontainers.image.base.name="cgr.dev/chainguard/python:latest"
+
+WORKDIR /app
+
+# Dependencies and code are copied as ROOT-owned files the app user can read but not modify: if the process
+# is compromised, it cannot rewrite its own code. (--link makes each COPY an independent, cacheable layer.)
+COPY --link --from=deps /app/venv /app/venv
+COPY --link --from=test /app/app ./app
+# Proof the tests passed: makes the test stage a dependency of this one (see the test stage comment).
+COPY --link --from=test /tmp/tests-passed /etc/build/tests-passed
+
+ENV PATH="/app/venv/bin:${PATH}" \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+# PYTHONDONTWRITEBYTECODE: works with a read-only root filesystem in Kubernetes.
+# PYTHONUNBUFFERED:        logs go straight to stdout, where the platform collects them.
+
+# Numeric user, not a name: Kubernetes `runAsNonRoot: true` can verify a number but not a name.
+USER 65532
+
+EXPOSE 8080
+
+# Exec form (a JSON array), not shell form: the app is PID 1 and receives SIGTERM directly, so it can drain
+# and exit cleanly. Shell form would make /bin/sh PID 1 (and this image has no shell anyway).
+ENTRYPOINT ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
+
+# No HEALTHCHECK: it would need curl or a shell, which this image deliberately does not have.
+# Health belongs to the platform: Kubernetes readiness, liveness and startup probes on /readyz and /healthz.
+
+
+# =====================================================================================================
+# .dockerignore (next to this Dockerfile) - an allowlist, so .env files, keys, logs and .git never enter
+# the build context, and therefore never a layer:
+#
+#   *
+#   !requirements.lock
+#   !requirements-dev.lock
+#   !app/
+#   !tests/
+# =====================================================================================================
+
+
+# =====================================================================================================
+# The same pattern for other languages (runtime stage only; the build and test stages follow the same shape)
+#
+# Go, compiled statically: no runtime at all, just the binary on `static` (CA certificates, tzdata, a user).
+#   FROM cgr.dev/chainguard/go:latest@sha256:...   AS build
+#   RUN CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o /out/app .
+#   FROM cgr.dev/chainguard/static:latest@sha256:...
+#   COPY --from=build /out/app /usr/bin/app
+#   USER 65532
+#   ENTRYPOINT ["/usr/bin/app"]
+#   (CGO_ENABLED=0 matters: a dynamically linked binary fails on `static` with "no such file or directory".)
+#
+# Java: build with the JDK image, run on the JRE image.
+#   FROM cgr.dev/chainguard/maven:latest@sha256:... AS build      (mvn -B package)
+#   FROM cgr.dev/chainguard/jre:latest@sha256:...
+#   COPY --from=build /app/target/app.jar /app/app.jar
+#   ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+#
+# Node.js: install with the -dev image (npm ci --omit=dev against the lock file), run on the plain node image.
+#   Note the plain Chainguard node image's ENTRYPOINT is node itself, so use CMD ["server.js"] or
+#   ENTRYPOINT ["node", "server.js"]; `CMD npm start` does not work there.
+#
+# No Dockerfile at all: apko builds an image from a declarative list of packages, with an SBOM generated
+# from that list. Useful when the image is only packages plus your binary.
+# =====================================================================================================

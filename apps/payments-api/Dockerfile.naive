@@ -1,0 +1,7 @@
+# For comparison only: the single-stage build most teams start with. Do not ship this.
+FROM golang:1.25
+WORKDIR /src
+COPY . .
+RUN go build -o /usr/local/bin/payments-api .
+EXPOSE 8080
+CMD payments-api

@@ -1,0 +1,31 @@
+# Only images from the organisation's own registry path or Chainguard may run.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: restrict-image-registries
+  annotations:
+    policies.kyverno.io/description: >-
+      Images must come from ghcr.io/sathpal/regulated-k8s-reference or cgr.dev/chainguard.
+      Maps to PCI DSS 6.3 / NIST SP 800-190 "untrusted images".
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: allowed-registries
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+              namespaceSelector:
+                matchExpressions:
+                  - { key: data-classification, operator: In, values: [pci, phi] }
+      validate:
+        message: "Images must come from ghcr.io/sathpal/regulated-k8s-reference/* or cgr.dev/chainguard/*."
+        pattern:
+          spec:
+            =(initContainers):
+              - image: "ghcr.io/sathpal/regulated-k8s-reference/* | cgr.dev/chainguard/*"
+            =(ephemeralContainers):
+              - image: "ghcr.io/sathpal/regulated-k8s-reference/* | cgr.dev/chainguard/*"
+            containers:
+              - image: "ghcr.io/sathpal/regulated-k8s-reference/* | cgr.dev/chainguard/*"

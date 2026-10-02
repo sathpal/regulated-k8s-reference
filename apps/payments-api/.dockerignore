@@ -1,0 +1,5 @@
+# Allowlist: only the Go sources reach the build context (no .env, no logs, no .git).
+*
+!go.mod
+!go.sum
+!*.go

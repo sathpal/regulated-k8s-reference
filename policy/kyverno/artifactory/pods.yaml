@@ -1,0 +1,18 @@
+# Test pods for restrict-to-artifactory.
+apiVersion: v1
+kind: Pod
+metadata: { name: via-artifactory, namespace: bank-payments, labels: { data-classification: pci } }
+spec:
+  containers: [ { name: app, image: "bank.jfrog.io/docker/payments-api:1.0.0" } ]
+---
+apiVersion: v1
+kind: Pod
+metadata: { name: direct-cgr, namespace: bank-payments, labels: { data-classification: pci } }
+spec:
+  containers: [ { name: app, image: "cgr.dev/chainguard/python:latest" } ]
+---
+apiVersion: v1
+kind: Pod
+metadata: { name: docker-hub, namespace: bank-payments, labels: { data-classification: pci } }
+spec:
+  containers: [ { name: app, image: "python:3.13-slim" } ]

@@ -1,0 +1,44 @@
+# Nightly early warning: build and test both services against TODAY's latest Chainguard images
+# (the pins in the Dockerfiles are overridden). Production never runs this build; it tells you whether
+# tomorrow's digest bump is safe, and catches breaking changes early, for example the language runtime
+# moving to a new minor or major version under the latest tag.
+name: nightly-latest
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "30 0 * * *"   # 00:30 UTC, before digestabot opens its pull request
+permissions:
+  contents: read
+jobs:
+  latest:
+    name: ${{ matrix.app }} on latest
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - app: payments-api
+            build_image: cgr.dev/chainguard/go:latest
+            runtime_image: cgr.dev/chainguard/static:latest
+          - app: patient-api
+            build_image: cgr.dev/chainguard/python:latest-dev
+            runtime_image: cgr.dev/chainguard/python:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install grype
+        run: curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+      - name: Build against latest (unit tests run inside the build)
+        env:
+          APP: ${{ matrix.app }}
+          BUILD_IMAGE: ${{ matrix.build_image }}
+          RUNTIME_IMAGE: ${{ matrix.runtime_image }}
+        run: |
+          docker build -t "nightly/$APP" --build-arg BUILD_IMAGE="$BUILD_IMAGE" --build-arg RUNTIME_IMAGE="$RUNTIME_IMAGE" "apps/$APP"
+          {
+            echo "### $APP against latest"
+            for img in "$BUILD_IMAGE" "$RUNTIME_IMAGE"; do
+              echo "- \`$img\` resolved to \`$(docker buildx imagetools inspect "$img" --format '{{json .Manifest.Digest}}' | tr -d '"')\`"
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Scan gate (same rule as production)
+        run: grype "nightly/${{ matrix.app }}" --only-fixed --fail-on high

@@ -1,0 +1,25 @@
+# Daily: look up the digest behind every tag@digest pin in the repository (Dockerfile ARGs, manifests) and,
+# if Chainguard has published a newer one, open or refresh one pull request "Update images digests".
+# That pull request runs the full delivery pipeline (tests, scan gate, e2e on kind) before anyone merges it.
+# Based on https://edu.chainguard.dev/chainguard/containers/security-and-compliance/updating-containers/digestabot/
+# Needs: Settings > Actions > General > "Allow GitHub Actions to create and approve pull requests".
+name: digestabot
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 1 * * *"   # 01:00 UTC, after nightly-latest has tested today's latest
+permissions:
+  contents: read
+jobs:
+  digestabot:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write        # push the update-digests branch
+      pull-requests: write   # open the pull request
+      id-token: write        # sign the commit with gitsign
+    steps:
+      - uses: actions/checkout@v4
+      - uses: chainguard-dev/digestabot@33d0b78e580aa0c83fe188eb3dfad6611b662479 # v1.3.2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          labels-for-pr: ''

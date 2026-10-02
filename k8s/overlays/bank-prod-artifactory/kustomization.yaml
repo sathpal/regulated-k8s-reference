@@ -1,0 +1,12 @@
+# The same bank production overlay for a customer whose artifacts all flow through JFrog Artifactory.
+# Developers and clusters keep one endpoint: the bank's Artifactory. Chainguard base images arrive through a
+# remote (pull-through) repository; the bank's own images live in a local repository; a virtual repository
+# gives both one address. Only the image path changes; the workload, its hardening and its policies do not.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../bank-prod
+images:
+  - name: ghcr.io/sathpal/regulated-k8s-reference/payments-api
+    newName: bank.jfrog.io/docker/payments-api      # virtual repo "docker" = apps-local + cgr-remote
+    newTag: "1.0.0"                                  # CI replaces this with the digest it built and signed

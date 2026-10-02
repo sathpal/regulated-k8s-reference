@@ -1,0 +1,33 @@
+# Default deny in the namespace, then allow only what this service needs.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: patient-api-allow
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: patient-api
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:                     # only the ingress controller's namespace may call the service
+        - namespaceSelector:
+            matchLabels:
+              network.platform/ingress: "true"
+      ports:
+        - port: 8080
+  egress:
+    - to:                       # DNS only; the service makes no other outbound calls
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - { port: 53, protocol: UDP }
+        - { port: 53, protocol: TCP }

@@ -1,0 +1,23 @@
+# A moving tag means you cannot say which code is running. Require a version tag or a digest.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-latest-tag
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: require-pinned-image
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+              namespaceSelector:
+                matchExpressions:
+                  - { key: data-classification, operator: In, values: [pci, phi] }
+      validate:
+        message: "Use a version tag or a digest, never :latest or no tag."
+        pattern:
+          spec:
+            containers:
+              - image: "*:* & !*:latest"

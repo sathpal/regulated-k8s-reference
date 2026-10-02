@@ -1,0 +1,41 @@
+# Pull-based delivery with Argo CD: the cluster pulls the overlays from Git, so no pipeline holds
+# production cluster credentials, and any drift from Git is visible and reverted.
+# Promotion = a pull request that changes the image digest in k8s/overlays/<env>/kustomization.yaml.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: bank-payments
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/sathpal/regulated-k8s-reference
+    targetRevision: main
+    path: k8s/overlays/bank-prod
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: bank-payments
+  syncPolicy:
+    # Bank production: no automatic sync. The approved change (CAB record linked in the pull request)
+    # is synced by the release engineer inside the change window. Self-heal stays on for drift.
+    syncOptions: [CreateNamespace=false, ServerSideApply=true]
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: health-records
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/sathpal/regulated-k8s-reference
+    targetRevision: main
+    path: k8s/overlays/health-prod
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: health-records
+  syncPolicy:
+    automated:          # pre-approved standard change: merged digest bumps sync on their own
+      prune: true
+      selfHeal: true
+    syncOptions: [CreateNamespace=false, ServerSideApply=true]

@@ -1,0 +1,23 @@
+# Every workload in a regulated namespace says what data it handles, so scope and evidence are clear.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-data-classification
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: classification-label
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+              namespaceSelector:
+                matchExpressions:
+                  - { key: data-classification, operator: In, values: [pci, phi] }
+      validate:
+        message: "Label the workload data-classification: pci, phi, internal or public."
+        pattern:
+          metadata:
+            labels:
+              data-classification: "pci | phi | internal | public"

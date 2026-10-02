@@ -1,0 +1,30 @@
+# Production workloads declare what they need and how Kubernetes can tell they are healthy.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-resources-and-probes
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: requests-limits-probes
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+              namespaceSelector:
+                matchExpressions:
+                  - { key: data-classification, operator: In, values: [pci, phi] }
+      validate:
+        message: "Every container needs a CPU and memory request, a memory limit, and a readiness probe."
+        pattern:
+          spec:
+            containers:
+              - resources:
+                  requests:
+                    cpu: "?*"
+                    memory: "?*"
+                  limits:
+                    memory: "?*"
+                readinessProbe:
+                  periodSeconds: ">0"

@@ -1,0 +1,30 @@
+# For an Artifactory customer: every image in regulated namespaces must come through the bank's Artifactory,
+# including Chainguard images (pulled through the cgr-remote repository). Pulling straight from cgr.dev or
+# Docker Hub bypasses the bank's governance (access control, Xray policies, retention), so it is refused.
+# Replaces restrict-image-registries for this customer.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: restrict-to-artifactory
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: artifactory-only
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+              namespaceSelector:
+                matchExpressions:
+                  - { key: data-classification, operator: In, values: [pci, phi] }
+      validate:
+        message: "Images must come through the bank's Artifactory (bank.jfrog.io/docker/*), not directly from cgr.dev or Docker Hub."
+        pattern:
+          spec:
+            =(initContainers):
+              - image: "bank.jfrog.io/docker/*"
+            =(ephemeralContainers):
+              - image: "bank.jfrog.io/docker/*"
+            containers:
+              - image: "bank.jfrog.io/docker/*"

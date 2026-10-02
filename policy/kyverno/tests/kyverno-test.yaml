@@ -1,0 +1,29 @@
+# kyverno test policy/kyverno/tests
+# Each policy refuses exactly the pod built to break it, admits the compliant pod,
+# and admits both production Deployments as kustomize renders them.
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: regulated-workloads
+policies:
+  - ../cluster/restrict-image-registries.yaml
+  - ../cluster/disallow-latest-tag.yaml
+  - ../cluster/require-resources-and-probes.yaml
+  - ../cluster/require-data-classification.yaml
+resources:
+  - pods.yaml
+  - workloads.yaml
+variables: values.yaml
+results:
+  - { policy: restrict-image-registries, rule: allowed-registries, kind: Pod, resources: [upstream-image], result: fail }
+  - { policy: restrict-image-registries, rule: allowed-registries, kind: Pod, resources: [compliant], result: pass }
+  - { policy: restrict-image-registries, rule: autogen-allowed-registries, kind: Deployment, resources: [payments-api, patient-api], result: pass }
+  - { policy: disallow-latest-tag, rule: require-pinned-image, kind: Pod, resources: [latest-tag], result: fail }
+  - { policy: disallow-latest-tag, rule: require-pinned-image, kind: Pod, resources: [compliant], result: pass }
+  - { policy: disallow-latest-tag, rule: autogen-require-pinned-image, kind: Deployment, resources: [payments-api, patient-api], result: pass }
+  - { policy: require-resources-and-probes, rule: requests-limits-probes, kind: Pod, resources: [no-resources], result: fail }
+  - { policy: require-resources-and-probes, rule: requests-limits-probes, kind: Pod, resources: [compliant], result: pass }
+  - { policy: require-resources-and-probes, rule: autogen-requests-limits-probes, kind: Deployment, resources: [payments-api, patient-api], result: pass }
+  - { policy: require-data-classification, rule: classification-label, kind: Pod, resources: [no-classification], result: fail }
+  - { policy: require-data-classification, rule: classification-label, kind: Pod, resources: [compliant], result: pass }
+  - { policy: require-data-classification, rule: autogen-classification-label, kind: Deployment, resources: [payments-api, patient-api], result: pass }

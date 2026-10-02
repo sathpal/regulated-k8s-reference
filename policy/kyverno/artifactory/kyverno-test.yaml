@@ -1,0 +1,11 @@
+# kyverno test policy/kyverno/artifactory
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: artifactory-only
+policies: [restrict-to-artifactory.yaml]
+resources: [pods.yaml]
+variables: ../tests/values.yaml
+results:
+  - { policy: restrict-to-artifactory, rule: artifactory-only, kind: Pod, resources: [via-artifactory], result: pass }
+  - { policy: restrict-to-artifactory, rule: artifactory-only, kind: Pod, resources: [direct-cgr, docker-hub], result: fail }

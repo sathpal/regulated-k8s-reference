@@ -1,0 +1,8 @@
+# The CLI cannot see a cluster, so namespace labels used by namespaceSelector are given here.
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Values
+namespaceSelector:
+  - name: bank-payments
+    labels: { data-classification: pci }
+  - name: health-records
+    labels: { data-classification: phi }
