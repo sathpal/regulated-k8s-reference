@@ -94,9 +94,9 @@ kubectl auth can-i delete nodes
 
 ```output
 ATTRIBUTE    VALUE
-Username     f29c4218-80eb-4ed2-acc3-a560aa979514
-Groups       [ff097a0a-d76d-499e-b05a-f031a5dc66bc system:authenticated]
-Extra: oid   [f29c4218-80eb-4ed2-acc3-a560aa979514]
+Username     <your-object-id>
+Groups       [<group-id> system:authenticated]
+Extra: oid   [<your-object-id>]
 Warning: the list may be incomplete: webhook authorizer does not support user rule resolution
 Resources                                       Non-Resource URLs   Resource Names   Verbs
 selfsubjectreviews.authentication.k8s.io        []                  []               [create]

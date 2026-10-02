@@ -1,0 +1,35 @@
+# Two pods built from different distributions (Wolfi and Alpine), placed on the same node.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: wolfi
+  labels:
+    lab: kernel
+spec:
+  nodeSelector:
+    kubernetes.azure.com/agentpool: user
+  containers:
+    - name: shell
+      image: cgr.dev/chainguard/wolfi-base:latest
+      command: ["sleep", "infinity"]
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: alpine
+  labels:
+    lab: kernel
+spec:
+  nodeSelector:
+    kubernetes.azure.com/agentpool: user
+  affinity:            # same node as the wolfi pod
+    podAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchLabels:
+              lab: kernel
+          topologyKey: kubernetes.io/hostname
+  containers:
+    - name: shell
+      image: docker.io/library/alpine:3.22
+      command: ["sleep", "infinity"]

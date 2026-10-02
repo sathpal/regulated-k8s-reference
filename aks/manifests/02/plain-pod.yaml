@@ -1,0 +1,19 @@
+# A pod with no securityContext and no resources: what you get when nobody sets anything.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: plain
+spec:
+  nodeSelector:
+    kubernetes.azure.com/agentpool: user
+  affinity:            # land on the same node as payments-api, so one node debug pod sees both
+    podAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: payments-api
+          topologyKey: kubernetes.io/hostname
+  containers:
+    - name: shell
+      image: cgr.dev/chainguard/wolfi-base:latest
+      command: ["sleep", "infinity"]

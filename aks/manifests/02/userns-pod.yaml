@@ -1,0 +1,20 @@
+# Root inside the container, an unprivileged uid on the node: a pod in its own user namespace.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: userns
+spec:
+  hostUsers: false
+  nodeSelector:
+    kubernetes.azure.com/agentpool: user
+  affinity:            # same node as payments-api, so one node debug pod sees all of them
+    podAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: payments-api
+          topologyKey: kubernetes.io/hostname
+  containers:
+    - name: shell
+      image: cgr.dev/chainguard/wolfi-base:latest
+      command: ["sleep", "infinity"]

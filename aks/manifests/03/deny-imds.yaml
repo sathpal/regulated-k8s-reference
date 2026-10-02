@@ -1,0 +1,25 @@
+# Egress for every pod in the namespace: DNS through CoreDNS, and anywhere outside the cluster
+# except the Azure instance metadata service (IMDS).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: deny-imds
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to:                       # CoreDNS: with Cilium, ipBlock does not match pods inside the cluster
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - { port: 53, protocol: UDP }
+        - { port: 53, protocol: TCP }
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 169.254.169.254/32

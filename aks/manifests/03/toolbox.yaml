@@ -1,0 +1,23 @@
+# A long-running pod with curl and a shell, used to call the instance metadata service.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: toolbox
+  labels:
+    app: toolbox
+spec:
+  nodeSelector:
+    kubernetes.azure.com/agentpool: user
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65532
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: curl
+      image: cgr.dev/chainguard/curl:latest-dev
+      command: ["sleep", "infinity"]
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]

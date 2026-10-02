@@ -1,0 +1,12 @@
+# A Service whose selector has a typo (payment-api, not payments-api): it gets a ClusterIP and no endpoints.
+apiVersion: v1
+kind: Service
+metadata:
+  name: payments-api-typo
+spec:
+  selector:
+    app.kubernetes.io/name: payment-api
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

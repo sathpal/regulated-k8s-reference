@@ -1,0 +1,42 @@
+# Allocates 10 MiB at a time until the 64 MiB memory limit stops it.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: memory-hog
+spec:
+  restartPolicy: Never
+  nodeSelector:
+    kubernetes.azure.com/agentpool: user
+  affinity:            # land on the same node as payments-api, so one node debug pod sees both
+    podAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: payments-api
+          topologyKey: kubernetes.io/hostname
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65532
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: hog
+      image: cgr.dev/chainguard/python:latest
+      args:
+        - -c
+        - |
+          import time
+          chunks = []
+          while True:
+              chunks.append(bytearray(10 * 1024 * 1024))
+              print(f"allocated {len(chunks) * 10} MiB", flush=True)
+              time.sleep(0.5)
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+      resources:
+        requests:
+          memory: 64Mi
+        limits:
+          memory: 64Mi
