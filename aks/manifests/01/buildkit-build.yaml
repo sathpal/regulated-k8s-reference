@@ -1,0 +1,12 @@
+# ACR Tasks multi-step task: build with BuildKit, then push.
+# `az acr build` runs the classic Docker builder, which refuses BuildKit-only Dockerfile syntax such as
+# RUN --mount. In a task file the build step can turn BuildKit on with DOCKER_BUILDKIT=1.
+# The task file must travel inside the uploaded context (lab 01, step 6):
+#   az acr run -r $ACR -f acb.yaml --set image=labs/payments-api:buildkit "$CTX"
+version: v1.1.0
+steps:
+  - id: build
+    build: -t $Registry/{{.Values.image}} -f Dockerfile .
+    env: ["DOCKER_BUILDKIT=1"]
+  - id: push
+    push: ["$Registry/{{.Values.image}}"]

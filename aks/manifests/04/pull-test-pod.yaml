@@ -1,0 +1,28 @@
+# One pod that pulls __IMAGE__ (filled by sed in lab 04). Used to show what happens when the kubelet
+# identity has no AcrPull role on the registry in the image reference.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pull-test
+  namespace: lab-a-registry
+spec:
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65532
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: app
+      image: __IMAGE__
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop: ["ALL"]
+      resources:
+        requests:
+          cpu: 10m
+          memory: 32Mi
+        limits:
+          memory: 64Mi

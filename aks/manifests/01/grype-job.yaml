@@ -1,0 +1,64 @@
+# Scan one image with grype inside the cluster, so nothing large is pulled to your laptop.
+# Lab 01, step 10 fills the two placeholders with sed:  __NAME__ (Job name suffix) and __IMAGE__ (image reference).
+# Registry credentials come from the acr-pull Secret (a short-lived ACR token), mounted as a Docker config.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: grype-__NAME__
+  namespace: lab-a-images
+  labels:
+    app.kubernetes.io/name: grype-scan
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 7200
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: grype-scan
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: grype
+          image: cgr.dev/chainguard/grype:latest
+          args: ["registry:__IMAGE__", "--output", "json", "--quiet"]
+          env:
+            - name: DOCKER_CONFIG              # grype reads registry credentials from $DOCKER_CONFIG/config.json
+              value: /docker
+            - name: GRYPE_DB_CACHE_DIR         # the vulnerability database is downloaded here at start
+              value: /cache/db
+            - name: TMPDIR                     # image layers are unpacked here
+              value: /cache
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              memory: 2Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: docker-config
+              mountPath: /docker
+              readOnly: true
+            - name: cache
+              mountPath: /cache
+      volumes:
+        - name: docker-config
+          secret:
+            secretName: acr-pull
+            items:
+              - key: .dockerconfigjson
+                path: config.json
+        - name: cache
+          emptyDir:
+            sizeLimit: 4Gi

@@ -1,0 +1,1 @@
+acrregk8s1e1193.azurecr.io/labs/payments-api@sha256:d2315b567c8d8497b90ec0ce3607b64c91491bf4e29ed54932a42c7e76d4e49d

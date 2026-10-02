@@ -1,0 +1,8 @@
+# Lab 04 namespace. Pod Security "restricted" is enforced.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: lab-a-registry
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/warn: restricted

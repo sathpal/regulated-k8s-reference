@@ -1,0 +1,17 @@
+# ACR Tasks multi-step task: BuildKit build that reuses layers from the previous push of the same image.
+# Every ACR Tasks run starts on a fresh agent with an empty Docker cache. --cache-from points BuildKit at
+# the last pushed image, and BUILDKIT_INLINE_CACHE=1 writes the cache metadata into the image it pushes.
+# Inline cache describes only the layers that end up in the pushed image. That is enough here: when no input
+# changed, BuildKit reuses the final layer and skips the build stage (go test, go build). Lab 01, step 7:
+#   az acr run -r $ACR -f acb.yaml --set image=labs/payments-api:cache-demo "$CTX"
+version: v1.1.0
+steps:
+  - id: build
+    build: >-
+      -t $Registry/{{.Values.image}}
+      --cache-from $Registry/{{.Values.image}}
+      --build-arg BUILDKIT_INLINE_CACHE=1
+      -f Dockerfile .
+    env: ["DOCKER_BUILDKIT=1"]
+  - id: push
+    push: ["$Registry/{{.Values.image}}"]

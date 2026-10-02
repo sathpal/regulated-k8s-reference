@@ -1,0 +1,8 @@
+# Lab 01 namespace. Pod Security "restricted" is enforced, so the scanner Job must run hardened too.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: lab-a-images
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/warn: restricted

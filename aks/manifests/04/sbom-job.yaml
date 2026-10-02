@@ -1,0 +1,59 @@
+# Produce a CycloneDX SBOM of one image inside the cluster. grype catalogs the image with syft's
+# catalogers and writes the package inventory (plus any vulnerability matches) as CycloneDX JSON.
+# Lab 04 fills __IMAGE__ with sed. Registry credentials come from the acr-pull Secret.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: sbom
+  namespace: lab-a-registry
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 7200
+  template:
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: grype
+          image: cgr.dev/chainguard/grype:latest
+          args: ["registry:__IMAGE__", "--output", "cyclonedx-json", "--quiet"]
+          env:
+            - name: DOCKER_CONFIG
+              value: /docker
+            - name: GRYPE_DB_CACHE_DIR
+              value: /cache/db
+            - name: TMPDIR
+              value: /cache
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              memory: 2Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: docker-config
+              mountPath: /docker
+              readOnly: true
+            - name: cache
+              mountPath: /cache
+      volumes:
+        - name: docker-config
+          secret:
+            secretName: acr-pull
+            items:
+              - key: .dockerconfigjson
+                path: config.json
+        - name: cache
+          emptyDir:
+            sizeLimit: 4Gi
