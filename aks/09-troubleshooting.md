@@ -172,7 +172,7 @@ Your cluster can pull images from acrregk8s1e1193.azurecr.io!
 
 Role     Scope
 -------  --------------------------------------------------------------------------------------------------------------------------------------------------
-AcrPull  /subscriptions/547d1edb-909b-4e45-906a-587f866bcf9a/resourceGroups/rg-aks-handson/providers/Microsoft.ContainerRegistry/registries/acrregk8s1e1193
+AcrPull  /subscriptions/<subscription-id>/resourceGroups/rg-aks-handson/providers/Microsoft.ContainerRegistry/registries/acrregk8s1e1193
 ```
 
 **What you are seeing:** DNS works and the kubelet identity exists for both registries; only the pull permission
@@ -627,9 +627,9 @@ kubectl auth whoami
 ```output
 Error from server (Forbidden): pods is forbidden: User "nobody@example.com" cannot list resource "pods" in API group "" in the namespace "lab-c-trouble": Azure does not have opinion for this non AAD user. If you are an AAD user, please set Extra:oid parameter for impersonated user in the kubeconfig
 ATTRIBUTE    VALUE
-Username     f29c4218-80eb-4ed2-acc3-a560aa979514
-Groups       [ff097a0a-d76d-499e-b05a-f031a5dc66bc system:authenticated]
-Extra: oid   [f29c4218-80eb-4ed2-acc3-a560aa979514]
+Username     <your-object-id>
+Groups       [<group-id> system:authenticated]
+Extra: oid   [<your-object-id>]
 ```
 
 **What you are seeing:** `Forbidden` comes from the API server, so the token was fine and the request reached
@@ -661,7 +661,7 @@ kubectl get --raw='/readyz?verbose' | tail -2
 
 ```output
 {
-  "id": "/subscriptions/547d1edb-909b-4e45-906a-587f866bcf9a/resourcegroups/rg-aks-handson/providers/Microsoft.ContainerService/managedClusters/aks-handson",
+  "id": "/subscriptions/<subscription-id>/resourcegroups/rg-aks-handson/providers/Microsoft.ContainerService/managedClusters/aks-handson",
   "nodeResourceGroup": "MC_rg-aks-handson_aks-handson_centralindia",
   "powerState": "Running",
   "provisioningState": "Succeeded",
