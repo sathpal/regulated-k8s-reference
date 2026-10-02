@@ -39,7 +39,7 @@ az resource list -g $NRG --query "[].{Name:name, Kind:type}" -o table
 
 ```output
 MC_rg-aks-handson_aks-handson_centralindia
-/subscriptions/547d1edb-909b-4e45-906a-587f866bcf9a/resourcegroups/rg-aks-handson/providers/Microsoft.ContainerService/managedClusters/aks-handson
+/subscriptions/<subscription-id>/resourcegroups/rg-aks-handson/providers/Microsoft.ContainerService/managedClusters/aks-handson
 Name                                      Kind
 ----------------------------------------  ------------------------------------------------
 9bd2d093-2f4b-41a0-b06b-48cc576b52ba      Microsoft.Network/publicIPAddresses
@@ -114,7 +114,7 @@ aks-system-11091932-vmss000000   Ready    <none>   43m   v1.35.8   system      0
 aks-user-25795745-vmss000000     Ready    <none>   39m   v1.35.8   user        centralindia-1   Standard_D2s_v5   AKSAzureLinux-V3gen2-202609.15.0
 aks-user-25795745-vmss000001     Ready    <none>   39m   v1.35.8   user        centralindia-2   Standard_D2s_v5   AKSAzureLinux-V3gen2-202609.15.0
 aks-user-25795745-vmss000002     Ready    <none>   17m   v1.35.8   user        centralindia-3   Standard_D2s_v5   AKSAzureLinux-V3gen2-202609.15.0
-azure:///subscriptions/547d1edb-909b-4e45-906a-587f866bcf9a/resourceGroups/mc_rg-aks-handson_aks-handson_centralindia/providers/Microsoft.Compute/virtualMachineScaleSets/aks-user-25795745-vmss/virtualMachines/0
+azure:///subscriptions/<subscription-id>/resourceGroups/mc_rg-aks-handson_aks-handson_centralindia/providers/Microsoft.Compute/virtualMachineScaleSets/aks-user-25795745-vmss/virtualMachines/0
 ```
 
 **What you are seeing:** each node pool is one Uniform VM scale set. The node name is the scale set's computer
@@ -304,7 +304,7 @@ pod/toolbox condition met
   "vmSize": "Standard_D2s_v5",
   "zone": "1",
   "resourceGroupName": "MC_rg-aks-handson_aks-handson_centralindia",
-  "subscriptionId": "547d1edb-909b-4e45-906a-587f866bcf9a",
+  "subscriptionId": "<subscription-id>",
   "image": "/subscriptions/109a5e88-712a-48ae-9078-9ca8b3c81345/resourceGroups/AKS-AzureLinux/providers/Microsoft.Compute/galleries/AKSAzureLinux/images/V3gen2/versions/202609.15.0",
   "kubeletIdentity": "55a5dec9-13a3-43f0-bfd0-58026851030b",
   "imdsRestriction": "false"
@@ -335,7 +335,7 @@ azurekeyvaultsecretsprovider-aks-handson
 --- aks-handson-agentpool
 Role     Scope
 -------  --------------------------------------------------------------------------------------------------------------------------------------------------
-AcrPull  /subscriptions/547d1edb-909b-4e45-906a-587f866bcf9a/resourceGroups/rg-aks-handson/providers/Microsoft.ContainerRegistry/registries/acrregk8s1e1193
+AcrPull  /subscriptions/<subscription-id>/resourceGroups/rg-aks-handson/providers/Microsoft.ContainerRegistry/registries/acrregk8s1e1193
 --- azurekeyvaultsecretsprovider-aks-handson
 ```
 
