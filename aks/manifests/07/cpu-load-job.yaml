@@ -1,0 +1,50 @@
+# CPU load for the HPA step: 3 pods x 8 threads call payments-api as fast as they can for 5 minutes.
+# Uses the same loadgen-script ConfigMap as load-job.yaml.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: cpu-load
+  namespace: lab-c-payments
+spec:
+  parallelism: 3
+  completions: 3
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: loadgen
+        data-classification: internal   # the namespace's admission policy wants every pod classified
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: load
+          image: cgr.dev/chainguard/python@sha256:89281daac77a3d91ef298d70ce3b7a6ccb2ebf268c084fa9a9bda1c92e71c64d   # python:latest, pinned by digest
+          command: ["python", "/scripts/load.py"]
+          env:
+            - { name: TARGET, value: "http://payments-api/version" }
+            - { name: DURATION, value: "300" }
+            - { name: WORKERS, value: "8" }
+            - { name: INTERVAL, value: "0" }
+            - { name: REPORT, value: "60" }
+          readinessProbe:       # required by the admission policy; for a batch pod it only proves Python starts
+            exec: { command: ["python", "-c", "0"] }
+            periodSeconds: 30
+          resources:            # requests equal limits: this pod is QoS class Guaranteed
+            requests: { cpu: 250m, memory: 64Mi }
+            limits: { cpu: 250m, memory: 64Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          volumeMounts:
+            - { name: script, mountPath: /scripts }
+      volumes:
+        - name: script
+          configMap: { name: loadgen-script }

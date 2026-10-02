@@ -1,0 +1,30 @@
+# Tries to put an application pod on the system node pool. The nodeSelector attracts it there,
+# but the pool's CriticalAddonsOnly=true:NoSchedule taint keeps it out, so the pod stays Pending.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pin-to-system
+  namespace: lab-c-payments
+  labels:
+    data-classification: internal
+spec:
+  nodeSelector:
+    kubernetes.azure.com/mode: system
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65532
+    seccompProfile: { type: RuntimeDefault }
+  containers:
+    - name: app
+      image: cgr.dev/chainguard/busybox@sha256:2840ec681db3a9dcd31edd0890437f856c22a2cf120de3d3552044ec674d4056   # busybox:latest, pinned by digest
+      command: ["sleep", "3600"]
+      readinessProbe:
+        exec: { command: ["cat", "/dev/null"] }
+        periodSeconds: 30
+      resources:
+        requests: { cpu: 10m, memory: 16Mi }
+        limits: { memory: 16Mi }
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities: { drop: ["ALL"] }

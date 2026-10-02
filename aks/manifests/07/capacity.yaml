@@ -1,0 +1,39 @@
+# Three pods that each request a full CPU. A Standard_D2s_v5 node has 1900m allocatable, so each node fits at
+# most one of them, and only if the node has a CPU to spare. The ones that do not fit stay Pending until the
+# cluster autoscaler adds a node (up to the pool's maximum).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: capacity
+  namespace: lab-c-payments
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: capacity
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: capacity
+        data-classification: internal
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 0
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: hold
+          image: cgr.dev/chainguard/busybox@sha256:2840ec681db3a9dcd31edd0890437f856c22a2cf120de3d3552044ec674d4056   # busybox:latest, pinned by digest
+          command: ["sleep", "86400"]
+          readinessProbe:
+            exec: { command: ["cat", "/dev/null"] }
+            periodSeconds: 30
+          resources:
+            requests: { cpu: "1", memory: 64Mi }
+            limits: { memory: 64Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }

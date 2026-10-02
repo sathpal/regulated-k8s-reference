@@ -13,7 +13,7 @@ cluster and every output in the pages is the real output, including the failures
 | [04](04-build-sign-deploy.md) | Building and deploying images | Tags vs digests, tag locks, import vs signatures, how the kubelet identity pulls, signing with a Key Vault key, deploy by digest |
 | [05](05-architecture.md) | Kubernetes architecture | The managed control plane, the konnectivity tunnel, every kube-system component, and one `kubectl apply` traced end to end through Cilium |
 | [06](06-cicd-into-aks.md) | CI/CD into Kubernetes | GitHub Actions to AKS with OIDC and no secrets, scan gate, Key Vault signature, automatic rollback; Flux GitOps with drift correction and promotion by commit |
-| [07](07-production.md) | Production on AKS | System and user pools, zones, QoS, a node drain under load with a PodDisruptionBudget, the cluster autoscaler, maintenance windows |
+| [07](07-production.md) | Production on AKS | System and user pools, zones, QoS, a node drain under load with a PodDisruptionBudget, the cluster autoscaler, HPA 3 to 10 replicas, a rolling update under load (1,154 requests, 0 failed), a bad release contained and undone, maintenance windows |
 | [08](08-security.md) | Security and best practices | Azure RBAC per namespace, Key Vault secrets via workload identity, Pod Security restricted, Cilium network policy, Kyverno, signed images only |
 | [09](09-troubleshooting.md) | Troubleshooting | ImagePullBackOff, CrashLoopBackOff, OOMKilled, Pending, readiness, empty Services, network policy, DNS and Entra login failures, reproduced and fixed |
 

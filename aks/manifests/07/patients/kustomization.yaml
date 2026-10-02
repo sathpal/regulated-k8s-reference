@@ -1,0 +1,19 @@
+# Lab 07: patient-api from k8s/base in its own namespace, by digest from the release images CI built, signed and
+# published to GHCR. The namespace is labelled as regulated data, so the repo's admission policies
+# (policy/kyverno/cluster) admit only images from ghcr.io/sathpal/regulated-k8s-reference or cgr.dev/chainguard.
+#   kubectl apply -k aks/manifests/07/patients
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: lab-c-patients
+resources:
+  - namespace.yaml
+  - ../../../../k8s/base/patient-api
+labels:                 # lets the drain step select only this lab's pods on a shared cluster
+  - pairs:
+      lab: c
+    includeSelectors: false
+    includeTemplates: true
+images:
+  - name: patient-api
+    newName: ghcr.io/sathpal/regulated-k8s-reference/patient-api
+    digest: sha256:e0699975e6a3990db9513288feac6c66798a78206092b3c355d612b0256b0030   # release e3be349
