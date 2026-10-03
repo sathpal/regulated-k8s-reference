@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1
 # Base images pinned by digest: production builds exactly what was tested. Digestabot opens a pull request
 # when Chainguard publishes a new digest; the nightly-latest workflow overrides these ARGs to test today's latest.
-ARG BUILD_IMAGE=cgr.dev/chainguard/python:latest-dev@sha256:261ceae8cf0ee5055341cd5c417984a70eb0e1406f2ddf83a4c93002bb10c26c
-ARG RUNTIME_IMAGE=cgr.dev/chainguard/python:latest@sha256:89281daac77a3d91ef298d70ce3b7a6ccb2ebf268c084fa9a9bda1c92e71c64d
+ARG BUILD_IMAGE=cgr.dev/chainguard/python:latest-dev@sha256:96cb9c155159daf6b21e70555f244081909ff161c5589112ddf308624c1a1c77
+ARG RUNTIME_IMAGE=cgr.dev/chainguard/python:latest@sha256:1961420e5f93bd056d4b0b40eca12cdf01b3ed09177aa4d6ec71fab38cbf158f
 
 # Stage 1 runs the tests on the -dev image (it has a shell); a failing test fails the build.
 FROM ${BUILD_IMAGE} AS test

@@ -25,8 +25,8 @@
 # Pin both images, and let automation (Renovate or Digestabot) open a pull request when a new digest
 # is published, so base-image updates are tested and reviewed like any other change.
 # Verify Chainguard's signature on these digests in CI before building (sign-and-verify.sh, step 1).
-ARG BUILD_IMAGE=cgr.dev/chainguard/python:latest-dev@sha256:REPLACE_WITH_DIGEST
-ARG RUNTIME_IMAGE=cgr.dev/chainguard/python:latest@sha256:REPLACE_WITH_DIGEST
+ARG BUILD_IMAGE=cgr.dev/chainguard/python:latest-dev@sha256:96cb9c155159daf6b21e70555f244081909ff161c5589112ddf308624c1a1c77sha256:REPLACE_WITH_DIGEST
+ARG RUNTIME_IMAGE=cgr.dev/chainguard/python:latest@sha256:1961420e5f93bd056d4b0b40eca12cdf01b3ed09177aa4d6ec71fab38cbf158fsha256:REPLACE_WITH_DIGEST
 
 
 # -----------------------------------------------------------------------------------------------------
